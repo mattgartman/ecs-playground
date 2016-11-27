@@ -1,0 +1,56 @@
+Description: >
+    Builds EFS for use with ECS
+
+Parameters:
+
+    VPC:
+        Type: AWS::EC2::VPC::Id
+        Description: Choose which VPC the security groups should be deployed to
+
+    EcsHostSecurityGroupName:
+        Type: String
+        Description: Name of the security group assigned to the ECS Hosts
+
+    EfsMountTargetSubnets:
+        Type: List<AWS::EC2::Subnet::Id>
+        Description: List of subnet ids to create MountTargets in, currently hardcoded to 2
+
+Resources:
+
+    EfsMountTargetSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            VpcId: !Ref VPC
+            GroupDescription: Access to EFS target groups
+            SecurityGroupInGress:
+                - SourceSecurityGroupId: !Ref EcsHostSecurityGroupName
+                  IpProtocol: -1
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName}-EFS-MountTargetGroups
+
+
+    EcsDockerVolumeFileSystem: 
+        Type: "AWS::EFS::FileSystem"
+        Properties: 
+            FileSystemTags: 
+            - 
+                Key: "Name"
+                Value: "EcsDockerVolumeFileSystem"
+    
+    ## subnet ids are hardcoded, is there way to make this more flexiable to iterate across any number of subnets?
+    MountTarget1: 
+        Type: "AWS::EFS::MountTarget"
+        Properties: 
+            FileSystemId: !Ref EcsDockerVolumeFileSystem
+            SubnetId: !Select [0, !Ref SubnetIds]
+            SecurityGroups: 
+                - !Ref EfsMountTargetSecurityGroup
+
+     MountTarget2: 
+        Type: "AWS::EFS::MountTarget"
+        Properties: 
+            FileSystemId: !Ref EcsDockerVolumeFileSystem
+            SubnetId: !Select [1, !Ref SubnetIds]
+            SecurityGroups: 
+                - !Ref EfsMountTargetSecurityGroup
