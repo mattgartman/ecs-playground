@@ -3,6 +3,10 @@ Description: >
 
 Parameters:
 
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
     VPC:
         Type: AWS::EC2::VPC::Id
         Description: Choose which VPC the security groups should be deployed to
@@ -11,7 +15,7 @@ Parameters:
         Type: String
         Description: Name of the security group assigned to the ECS Hosts
 
-    EfsMountTargetSubnets:
+    EfsMountTargetSubnetIds:
         Type: List<AWS::EC2::Subnet::Id>
         Description: List of subnet ids to create MountTargets in, currently hardcoded to 2
 
@@ -22,7 +26,7 @@ Resources:
         Properties:
             VpcId: !Ref VPC
             GroupDescription: Access to EFS target groups
-            SecurityGroupInGress:
+            SecurityGroupIngress:
                 - SourceSecurityGroupId: !Ref EcsHostSecurityGroupName
                   IpProtocol: -1
             Tags:
@@ -37,20 +41,22 @@ Resources:
             - 
                 Key: "Name"
                 Value: "EcsDockerVolumeFileSystem"
+
     
-    ## subnet ids are hardcoded, is there way to make this more flexiable to iterate across any number of subnets?
+    # subnet ids are hardcoded, is there way to make this more flexiable to iterate across any number of subnets?
     MountTarget1: 
         Type: "AWS::EFS::MountTarget"
         Properties: 
             FileSystemId: !Ref EcsDockerVolumeFileSystem
-            SubnetId: !Select [0, !Ref SubnetIds]
+            SubnetId: !Select [0, !Ref EfsMountTargetSubnetIds]
             SecurityGroups: 
-                - !Ref EfsMountTargetSecurityGroup
-
-     MountTarget2: 
+                - 
+                 !Ref EfsMountTargetSecurityGroup
+    MountTarget2: 
         Type: "AWS::EFS::MountTarget"
         Properties: 
             FileSystemId: !Ref EcsDockerVolumeFileSystem
-            SubnetId: !Select [1, !Ref SubnetIds]
+            SubnetId: !Select [1, !Ref EfsMountTargetSubnetIds]
             SecurityGroups: 
-                - !Ref EfsMountTargetSecurityGroup
+                - 
+                 !Ref EfsMountTargetSecurityGroup
