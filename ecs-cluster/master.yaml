@@ -60,6 +60,16 @@ Resources:
                 Subnets: !GetAtt VPC.Outputs.PublicSubnets
                 SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
 
+    EFS:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Join ["", [!Ref s3BucketUrl, "/infrastructure/efs.yaml"]]
+            Parameters:
+                EnvironmentName: !Ref AWS::StackName
+                VPC: !GetAtt VPC.Outputs.VPC
+                EcsHostSecurityGroupName: !GetAtt SecurityGroups.Outputs.ECSHostSecurityGroup
+                EfsMountTargetSubnetIds: !Join [",", [!GetAtt VPC.Outputs.PrivateSubnet1, !GetAtt VPC.Outputs.PrivateSubnet2]]
+    
     ECS:
         Type: AWS::CloudFormation::Stack
         Properties:
