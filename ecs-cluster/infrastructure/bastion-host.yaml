@@ -1,0 +1,114 @@
+Description: >
+    Creates a Bastion host for ECS
+
+Parameters:
+
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+    KeyPairName:
+        Description: Name of the KeyPair to Use
+        Type: String
+
+    VPC:
+        Description: Name of the VPC
+        Type: AWS::EC2::VPC::Id
+    
+    SubnetId:
+        Description: ID of the subnet to place host
+        Type: String
+
+Resources: 
+
+    BastionSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            VpcId: !Ref VPC
+            GroupDescription: Basition Access
+            SecurityGroupIngress:
+                - CidrIp: 0.0.0./0
+                  ToPort: 22
+                  IpProtocol: tcp
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName}-BasitionHostSecurityGroup
+
+    BastionIAMRole:
+        Type: AWS::IAM::Role
+        Properties: 
+            Path: /
+            RoleName: !Sub ${EnvironmentName}-ECSBastionRole-${AWS::Region}
+            AssumeRolePolicyDocument: |
+                {
+                    "Statement": [{
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": { 
+                            "Service": "ec2.amazonaws.com" 
+                        }
+                    }]
+                }
+            Policies: 
+                - PolicyName: ecs-basition
+                  PolicyDocument: |
+                    {
+                        "Statement": [{
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecs:CreateCluster",
+                                "ecs:DeregisterContainerInstance",
+                                "ecs:DiscoverPollEndpoint",
+                                "ecs:Poll",
+                                "ecs:RegisterContainerInstance",
+                                "ecs:StartTelemetrySession",
+                                "ecs:Submit*",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents",
+                                "ecr:BatchCheckLayerAvailability",
+                                "ecr:BatchGetImage",
+                                "ecr:GetDownloadUrlForLayer",
+                                "ecr:GetAuthorizationToken",
+                                "elasticfilesystem:DescribeFileSystems",
+                                "elasticfilesystem:DescribeMountTargets",
+                                "ec2:DescribeInstances"
+                            ],
+                            "Resource": "*"
+                        }]
+                    }
+
+    
+    BastionInstanceProfile: 
+        Type: AWS::IAM::InstanceProfile
+        Properties:
+            Path: /
+            Roles: 
+                - !Ref BastionIAMRole
+
+    BastionEIP:
+        Type: AWS::EC2::EIP
+        Properties:
+            InstanceId: !Ref BastionHost
+            Domain: vpc
+
+    BastionHost: 
+        Type: AWS::EC2::Instance
+        Properties: 
+            ImageId: "ami-b73b63a0" #nov2016 us-east-1
+            KeyName: !Ref KeyPairName 
+            IamInstanceProfile: !Ref BastionInstanceProfile
+            InstanceType: t2.micro            
+            NetworkInterfaces: 
+                - AssociatePublicIpAddress: "true"
+                  DeviceIndex: "0"
+                  GroupSet: 
+                   - !Ref BastionSecurityGroup
+                  SubnetId: !Ref SubnetId
+            Tags:
+                - Key: Name
+                  Value: "ECSBastionHost"
+Outputs:
+
+    BastionHostSecurityGroup:
+        Description: Id of BastionHost Security Group
+        Value: !Ref BastionSecurityGroup
