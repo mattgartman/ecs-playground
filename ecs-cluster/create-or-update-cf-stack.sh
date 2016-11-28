@@ -15,6 +15,6 @@ else
     echo 'updating stack'
         aws cloudformation update-stack --stack-name $CF_STACKNAME \
         --template-body $CF_STACK_S3_URL/master.yaml \
-        --parameters ParameterKey=s3BucketUrl,ParameterValue=$CF_STACK_S3_URL ParameterKey=KeyPairName,ParameterValue=$CF_KEYPAIRNAME ParameterKey=BastionHostSecurityGroupName,ParameterValue=$CF_BASTION_HOST_SECURITY_GROUP_NAME \
+        --parameters ParameterKey=s3BucketUrl,ParameterValue=$CF_STACK_S3_URL ParameterKey=KeyPairName,ParameterValue=$CF_KEYPAIRNAME \
         --capabilities 'CAPABILITY_NAMED_IAM' 
 fi
