@@ -108,6 +108,8 @@ Resources:
             UserData: 
                 "Fn::Base64": !Sub |
                     #!/bin/bash
+                    #required to give access to aws cli
+                    PATH=$PATH:/usr/local/bin/
                     yum install -y aws-cfn-bootstrap
                     /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration                    
                     /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSAutoScalingGroup
@@ -132,7 +134,14 @@ Resources:
                     echo "NIC_MAC = $NIC_MAC" 1>> /etc/efssetup.log
                     SUBNET_ID=$(curl -s "http://169.254.169.254/latest/meta-data/network/interfaces/macs/"$NIC_MAC"subnet-id")
                     echo "subnet_id = $SUBNET_ID" 1>> /etc/efssetup.log
-                    DIR_SRC=$(aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`].{Ip:IpAddress}' --output text)
+                    #DIR_SRC=$(aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`].{Ip:IpAddress}' --output text)
+                    #using JQ to rule out !Sub picking up the curley braces in query
+                    echo $EC2_REGION 1>> /etc/efssetup.log
+                    echo $EFS_FILE_SYSTEM_ID 1>> /etc/efssetup.log
+                    echo $SUBNET_ID 1>> /etc/efssetup.log
+                    aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`]' &>> /etc/efssetup.log
+                    aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`]'|jq ".[].IpAddress" -r &>> /etc/efssetup.log
+                    DIR_SRC=$(aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`]'|jq ".[].IpAddress" -r)
                     echo "DIR_SRC = $DIR_SRC" 1>> /etc/efssetup.log
                     DIR_TGT=/mnt/efs 
                     #Create mount point
