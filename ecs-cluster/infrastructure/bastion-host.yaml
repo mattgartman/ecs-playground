@@ -27,8 +27,9 @@ Resources:
             VpcId: !Ref VPC
             GroupDescription: Basition Access
             SecurityGroupIngress:
-                - CidrIp: 0.0.0./0
+                - CidrIp: 0.0.0.0/0
                   ToPort: 22
+                  FromPort: 22
                   IpProtocol: tcp
             Tags:
                 - Key: Name

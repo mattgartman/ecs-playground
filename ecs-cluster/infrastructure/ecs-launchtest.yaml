@@ -1,0 +1,164 @@
+Description: >
+    test launch config
+
+Parameters:
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+    InstanceType: 
+        Description: Which instance type should we use to build the ECS cluster?
+        Type: String
+        Default: c4.large
+
+    ClusterSize:
+        Description: How many ECS hosts do you want to initially deploy?
+        Type: Number
+        Default: 4
+
+    VPC:
+        Description: Choose which VPC this ECS cluster should be deployed to
+        Type: AWS::EC2::VPC::Id
+
+    Subnets:
+        Description: Choose which subnets this ECS cluster should be deployed to
+        Type: List<AWS::EC2::Subnet::Id>
+
+    SecurityGroup:
+        Description: Select the Security Group to use for the ECS cluster hosts
+        Type: AWS::EC2::SecurityGroup::Id
+
+    KeyPairName:
+        Description: AWS KeyPair Name
+        Type: String
+    
+    ECSCluster:
+        Type: AWS::ECS::Cluster
+        Description: ECS Cluster
+
+    ECSInstanceProfile:
+        Type: AWS::IAM::InstanceProfile
+        Description: Instance profile
+
+
+Mappings:
+
+    # These are the latest ECS optimized AMIs as of November 2016:
+    #
+    #   amzn-ami-2016.09.a-amazon-ecs-optimized
+    #   ECS agent:    1.13.0
+    #   Docker:       1.11.2
+    #   ecs-init:     1.13.0-1
+    #
+    # You can find the latest available on this page of our documentation:
+    # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html
+    # (note the AMI identifier is region specific) 
+
+    AWSRegionToAMI:
+        us-east-1:
+            AMI: ami-1924770e
+        us-east-2:
+            AMI: ami-bd3e64d8
+        us-west-1:
+            AMI: ami-7f004b1f
+        us-west-2:
+            AMI: ami-56ed4936
+        eu-west-1:
+            AMI: ami-c8337dbb
+        eu-central-1:
+            AMI: ami-dd12ebb2
+        ap-northeast-1:
+            AMI: ami-c8b016a9
+        ap-southeast-1:
+            AMI: ami-6d22840e
+        ap-southeast-2:
+            AMI: ami-73407d10
+
+Resources:
+
+   ECSLaunchConfiguration:
+        Type: AWS::AutoScaling::LaunchConfiguration
+        Properties:
+            ImageId:  !FindInMap [AWSRegionToAMI, !Ref "AWS::Region", AMI]
+            InstanceType: !Ref InstanceType
+            SecurityGroups: 
+                - !Ref SecurityGroup
+            IamInstanceProfile: !Ref ECSInstanceProfile
+            KeyName: !Ref KeyPairName
+            UserData: 
+                "Fn::Base64": !Sub |
+                    #!/bin/bash
+                    yum install -y aws-cfn-bootstrap
+                    /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration                    
+                    /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSAutoScalingGroup
+                    EC2_AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+                    EC2_REGION="`echo \"$EC2_AVAIL_ZONE\" | sed -e 's:\([0-9][0-9]*\)[a-z]*\$:\\1:'`"
+                    echo "EC2_AVAIL_ZONE=$EC2_AVAIL_ZONE" >> /etc/efssetup.log
+                    #Get EFS FileSystemID attribute
+                    #Instance needs to be added to a EC2 role that give the instance at least read access to EFS
+                    #testEFS_FILE_SYSTEM_NAME='EcsDockerVolumeFileSystem'
+                    #testEFS_FILE_SYSTEM_ID=`/usr/local/bin/aws efs describe-file-systems --region $EC2_REGION | jq '.FileSystems[]' | jq 'select(.Name=="'$EFS_FILE_SYSTEM_NAME'")' | jq -r '.FileSystemId'`
+                    #Check to see if the variable is set. If not, then exit.
+                    # if [-z "$EFS_FILE_SYSTEM_ID"]; then
+                    #     echo "ERROR: variable not set" 1>> /etc/efssetup.log
+                    #     exit
+                    # fi
+                    # #Instance needs to be a member of security group that allows 2049 inbound/outbound
+                    # #The security group that the instance belongs to has to be added to EFS file system configuration
+                    # #Create variables for source and target
+                    # curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/ &>> /etc/efssetup.log
+                    # NIC_MAC=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/)
+                    # echo "NIC_MAC = $NIC_MAC" 1>> /etc/efssetup.log
+                    # SUBNET_ID=$(curl -s "http://169.254.169.254/latest/meta-data/network/interfaces/macs/"$NIC_MAC"subnet-id")
+                    # echo "subnet_id = $SUBNET_ID" 1>> /etc/efssetup.log
+                    # DIR_SRC=$(aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`].{Ip:IpAddress}' --output text)
+                    # echo "DIR_SRC = $DIR_SRC" 1>> /etc/efssetup.log
+                    # DIR_TGT=/mnt/efs 
+                    # #Create mount point
+                    # mkdir $DIR_TGT
+                    # #Backup fstab
+                    # cp -p /etc/fstab /etc/fstab.back-$(date +%F)
+                    # #Append line to fstab
+                    # echo -e "$DIR_SRC:/ \t\t $DIR_TGT \t\t nfs \t\t defaults \t\t 0 \t\t 0" | tee -a /etc/fstab
+                    # #Mount EFS file system
+                    # mount -t nfs4 $DIR_SRC:/ $DIR_TGT
+                    exit 0
+
+        Metadata:
+            AWS::CloudFormation::Init:
+                config:
+                    yum:
+                        jq: []
+                        nfs-utils: []
+                        python27: []
+                        python27-pip: []
+                    commands:
+                        01_add_instance_to_cluster:
+                            command: !Sub echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+                        02_install_awsclie:
+                            command: !Sub pip install awscli
+                    files:
+                        "/etc/cfn/cfn-hup.conf":
+                            mode: 000400
+                            owner: root
+                            group: root
+                            content: !Sub |
+                                [main]
+                                stack=${AWS::StackId}
+                                region=${AWS::Region}
+                        
+                        "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+                            content: !Sub |
+                                [cfn-auto-reloader-hook]
+                                triggers=post.update
+                                path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init
+                                action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
+
+                    services: 
+                        sysvinit:
+                            cfn-hup: 
+                                enabled: true
+                                ensureRunning: true
+                                files: 
+                                    - /etc/cfn/cfn-hup.conf
+                                    - /etc/cfn/hooks.d/cfn-auto-reloader.conf

@@ -116,47 +116,49 @@ Resources:
                     echo "EC2_AVAIL_ZONE=$EC2_AVAIL_ZONE" >> /etc/efssetup.log
                     #Get EFS FileSystemID attribute
                     #Instance needs to be added to a EC2 role that give the instance at least read access to EFS
-                    #testEFS_FILE_SYSTEM_NAME='EcsDockerVolumeFileSystem'
-                    #testEFS_FILE_SYSTEM_ID=`/usr/local/bin/aws efs describe-file-systems --region $EC2_REGION | jq '.FileSystems[]' | jq 'select(.Name=="'$EFS_FILE_SYSTEM_NAME'")' | jq -r '.FileSystemId'`
+                    EFS_FILE_SYSTEM_NAME='EcsDockerVolumeFileSystem'
+                    EFS_FILE_SYSTEM_ID=`/usr/local/bin/aws efs describe-file-systems --region $EC2_REGION | jq '.FileSystems[]' | jq 'select(.Name=="'$EFS_FILE_SYSTEM_NAME'")' | jq -r '.FileSystemId'`
+                    echo "EFS_FILE_SYSTEM_ID = $EFS_FILE_SYSTEM_ID" 1>> /etc/efssetup.log
                     #Check to see if the variable is set. If not, then exit.
                     # if [-z "$EFS_FILE_SYSTEM_ID"]; then
                     #     echo "ERROR: variable not set" 1>> /etc/efssetup.log
                     #     exit
                     # fi
-                    # #Instance needs to be a member of security group that allows 2049 inbound/outbound
-                    # #The security group that the instance belongs to has to be added to EFS file system configuration
-                    # #Create variables for source and target
-                    # curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/ &>> /etc/efssetup.log
-                    # NIC_MAC=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/)
-                    # echo "NIC_MAC = $NIC_MAC" 1>> /etc/efssetup.log
-                    # SUBNET_ID=$(curl -s "http://169.254.169.254/latest/meta-data/network/interfaces/macs/"$NIC_MAC"subnet-id")
-                    # echo "subnet_id = $SUBNET_ID" 1>> /etc/efssetup.log
-                    # DIR_SRC=$(aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`].{Ip:IpAddress}' --output text)
-                    # echo "DIR_SRC = $DIR_SRC" 1>> /etc/efssetup.log
-                    # DIR_TGT=/mnt/efs 
-                    # #Create mount point
-                    # mkdir $DIR_TGT
-                    # #Backup fstab
-                    # cp -p /etc/fstab /etc/fstab.back-$(date +%F)
-                    # #Append line to fstab
-                    # echo -e "$DIR_SRC:/ \t\t $DIR_TGT \t\t nfs \t\t defaults \t\t 0 \t\t 0" | tee -a /etc/fstab
-                    # #Mount EFS file system
-                    # mount -t nfs4 $DIR_SRC:/ $DIR_TGT
+                    #Instance needs to be a member of security group that allows 2049 inbound/outbound
+                    #The security group that the instance belongs to has to be added to EFS file system configuration
+                    #Create variables for source and target
+                    curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/ &>> /etc/efssetup.log
+                    NIC_MAC=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/)
+                    echo "NIC_MAC = $NIC_MAC" 1>> /etc/efssetup.log
+                    SUBNET_ID=$(curl -s "http://169.254.169.254/latest/meta-data/network/interfaces/macs/"$NIC_MAC"subnet-id")
+                    echo "subnet_id = $SUBNET_ID" 1>> /etc/efssetup.log
+                    DIR_SRC=$(aws efs describe-mount-targets --region $EC2_REGION --file-system $EFS_FILE_SYSTEM_ID --query 'MountTargets[?SubnetId==`'$SUBNET_ID'`].{Ip:IpAddress}' --output text)
+                    echo "DIR_SRC = $DIR_SRC" 1>> /etc/efssetup.log
+                    DIR_TGT=/mnt/efs 
+                    #Create mount point
+                    mkdir $DIR_TGT
+                    #Backup fstab
+                    cp -p /etc/fstab /etc/fstab.back-$(date +%F)
+                    #Append line to fstab
+                    echo -e "$DIR_SRC:/ \t\t $DIR_TGT \t\t nfs \t\t defaults \t\t 0 \t\t 0" | tee -a /etc/fstab
+                    #Mount EFS file system
+                    mount -t nfs4 $DIR_SRC:/ $DIR_TGT
                     exit 0
 
         Metadata:
             AWS::CloudFormation::Init:
                 config:
-                    yum:
-                        jq: []
-                        nfs-utils: []
-                        python27: []
-                        python27-pip: []
+                    packages: 
+                        yum:
+                            jq: []
+                            nfs-utils: []
+                            python27: []
+                            python27-pip: []
                     commands:
                         01_add_instance_to_cluster:
                             command: !Sub echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
                         02_install_awsclie:
-                            command: !Sub pip install awscli
+                            command: pip install awscli
                     files:
                         "/etc/cfn/cfn-hup.conf":
                             mode: 000400
