@@ -152,6 +152,9 @@ Resources:
                     echo -e "$DIR_SRC:/ \t\t $DIR_TGT \t\t nfs4 \t\t defaults \t\t 0 \t\t 0" | tee -a /etc/fstab
                     #Mount EFS file system
                     mount -a
+                    #very hacky fix for now, can't get jenkins container to play nice with permissions on a remote mount'
+                    mkdir $DIR_TGT/jenkins
+                    #should this really be 777?
                     chmod -R 777 $DIR_TGT
                     service docker restart
                     start ecs
