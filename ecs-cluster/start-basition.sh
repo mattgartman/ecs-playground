@@ -1,2 +1,2 @@
 #!/bin/bash
-aws ec2 start-instances --instance-id i-0f96ff6ccaf48888c
+aws ec2 start-instances --instance-id i-044d12ac310266c66
