@@ -21,11 +21,13 @@ Parameters:
 
     ProvidedBastionHostSecurityGroup:
         Description: Name of Security Group to utilize for the basition host  One will be created if blank.
-        Type:  AWS::EC2::SecurityGroup::Id
+        Type:  String
+        Default: ""
 
     ProvidedBastionIAMInstanceProfile:
         Description: Name of the IAM Instance Profile to utilize for the basition host.  One will be created if blank.
-        Type: AWS::IAM::InstanceProfile::Id
+        Type: String
+        Default: ""
 
 Conditions:
     CreateBastionSecurityGroup: !Equals [ !Ref ProvidedBastionHostSecurityGroup, ""]

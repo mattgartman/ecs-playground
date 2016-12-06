@@ -10,7 +10,7 @@ if aws cloudformation describe-stacks --stack-name $CF_STACKNAME 2>&1 |grep -q '
         --template-body $CF_STACK_S3_URL/master.yaml \
         --parameters ParameterKey=s3BucketUrl,ParameterValue=$CF_STACK_S3_URL ParameterKey=KeyPairName,ParameterValue=$CF_KEYPAIRNAME \
         --capabilities 'CAPABILITY_NAMED_IAM' \
-        --disable-rollback
+        #--disable-rollback
 else
     echo 'updating stack'
         aws cloudformation update-stack --stack-name $CF_STACKNAME \
