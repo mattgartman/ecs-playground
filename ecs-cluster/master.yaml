@@ -23,6 +23,13 @@ Parameters:
         Description: AWS KeyPair Name
         Type: String
 
+    ProvidedBastionHostSecurityGroup:
+        Description: Name of Security Group to utilize for the basition host  One will be created if blank.
+        Type:  AWS::EC2::SecurityGroup::Id
+
+    ProvidedBastionIAMInstanceProfile:
+        Description: Name of the IAM Instance Profile to utilize for the basition host.  One will be created if blank.
+        Type: AWS::IAM::InstanceProfile::Id     
 
 Resources:
 
@@ -47,7 +54,8 @@ Resources:
                 VPC: !GetAtt VPC.Outputs.VPC
                 KeyPairName: !Ref KeyPairName
                 SubnetId: !GetAtt VPC.Outputs.PublicSubnet1
-
+                ProvidedBastionHostSecurityGroup: !Ref ProvidedBastionHostSecurityGroup
+                ProvidedBastionIAMInstanceProfile: !Ref ProvidedBastionIAMInstanceProfile
 
     SecurityGroups:
         Type: AWS::CloudFormation::Stack

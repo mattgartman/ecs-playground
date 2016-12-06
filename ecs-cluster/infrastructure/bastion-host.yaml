@@ -19,10 +19,23 @@ Parameters:
         Description: ID of the subnet to place host
         Type: String
 
+    ProvidedBastionHostSecurityGroup:
+        Description: Name of Security Group to utilize for the basition host  One will be created if blank.
+        Type:  AWS::EC2::SecurityGroup::Id
+
+    ProvidedBastionIAMInstanceProfile:
+        Description: Name of the IAM Instance Profile to utilize for the basition host.  One will be created if blank.
+        Type: AWS::IAM::InstanceProfile::Id
+
+Conditions:
+    CreateBastionSecurityGroup: !Equals [ !Ref ProvidedBastionHostSecurityGroup, ""]
+    CreateBastionIAMInstanceProfile: !Equals [ !Ref ProvidedBastionIAMInstanceProfile, ""]
+
 Resources: 
 
     BastionSecurityGroup:
         Type: AWS::EC2::SecurityGroup
+        Condition: CreateBastionSecurityGroup
         Properties:
             VpcId: !Ref VPC
             GroupDescription: Basition Access
@@ -37,6 +50,7 @@ Resources:
 
     BastionIAMRole:
         Type: AWS::IAM::Role
+        Condition: CreateBastionIAMInstanceProfile
         Properties: 
             Path: /
             RoleName: !Sub ${EnvironmentName}-ECSBastionRole-${AWS::Region}
@@ -81,6 +95,7 @@ Resources:
     
     BastionInstanceProfile: 
         Type: AWS::IAM::InstanceProfile
+        Condition: CreateBastionIAMInstanceProfile
         Properties:
             Path: /
             Roles: 
@@ -97,17 +112,17 @@ Resources:
         Properties: 
             ImageId: "ami-b73b63a0" #nov2016 us-east-1
             KeyName: !Ref KeyPairName 
-            IamInstanceProfile: !Ref BastionInstanceProfile
+            IamInstanceProfile: !If [ CreateBastionIAMInstanceProfile, !Ref BastionInstanceProfile, !Ref ProvidedBastionIAMInstanceProfile]
             InstanceType: t2.micro            
             NetworkInterfaces: 
                 - AssociatePublicIpAddress: "true"
                   DeviceIndex: "0"
                   GroupSet: 
-                   - !Ref BastionSecurityGroup
+                   - !If [CreateBastionSecurityGroup, !Ref BastionSecurityGroup, !Ref ProvidedBastionHostSecurityGroup]
                   SubnetId: !Ref SubnetId
             Tags:
                 - Key: Name
-                  Value: "ECSBastionHost"
+                  Value: "mrgBastionHost"
 Outputs:
 
     BastionHostSecurityGroup:
