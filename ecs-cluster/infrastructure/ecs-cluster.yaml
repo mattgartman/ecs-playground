@@ -84,7 +84,10 @@ Resources:
             DesiredCapacity: !Ref ClusterSize
             Tags: 
                 - Key: Name
-                  Value: !Sub ${EnvironmentName} ECS host
+                  Value: !Sub ${EnvironmentName}-ECS-Host
+                  PropagateAtLaunch: true
+                - Key: Owner
+                  Value: mrg
                   PropagateAtLaunch: true
         CreationPolicy:
             ResourceSignal: 

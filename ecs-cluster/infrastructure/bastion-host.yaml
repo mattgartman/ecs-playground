@@ -123,6 +123,8 @@ Resources:
             Tags:
                 - Key: Name
                   Value: "mrgBastionHost"
+                - Key: Owner    
+                  Value: "mrg"
 Outputs:
 
     BastionHostSecurityGroup:

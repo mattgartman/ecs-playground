@@ -43,7 +43,7 @@ Resources:
             CidrBlock: !Ref VpcCIDR
             Tags: 
                 - Key: Name 
-                  Value: !Ref EnvironmentName
+                  Value: !Ref EnvironmentName VPC
             
     InternetGateway:
         Type: AWS::EC2::InternetGateway
