@@ -131,4 +131,4 @@ Outputs:
 
     BastionHostSecurityGroup:
         Description: Id of BastionHost Security Group
-        Value: !Ref BastionSecurityGroup
+        Value: !If [CreateBastionSecurityGroup, !Ref BastionSecurityGroup, !Ref ProvidedBastionHostSecurityGroup]
